@@ -8,6 +8,8 @@ import (
 	"context"
 	"runtime"
 	"time"
+	"fmt"
+	"strings"
 
 	grpc "google.golang.org/grpc"
 
@@ -29,6 +31,29 @@ func NewStatsServer(manager feature_stats.Manager) StatsServiceServer {
 		stats:     manager,
 		startTime: time.Now(),
 	}
+}
+
+func (s *statsServer) GetUserIPStats(ctx context.Context, request *GetStatsRequest) (*GetUserIPStatsResponse, error) {
+	ipStorager := s.stats.GetIPStorager(request.Name)
+	if ipStorager == nil {
+		return nil, newError(request.Name, " not found.")
+	}
+
+	ipList := ipStorager.All()
+	if request.Reset_ {
+		ipStorager.Empty()
+	}
+
+	var value string
+	for _, ip := range ipList {
+		value += fmt.Sprintf(",%s", ip)
+	}
+	value = strings.TrimPrefix(value, ",")
+
+	return &GetUserIPStatsResponse{
+		Name:  request.Name,
+		Value: value,
+	}, nil
 }
 
 func (s *statsServer) GetStats(ctx context.Context, request *GetStatsRequest) (*GetStatsResponse, error) {
@@ -63,7 +88,7 @@ func (s *statsServer) QueryStats(ctx context.Context, request *QueryStatsRequest
 		return nil, newError("QueryStats only works its own stats.Manager.")
 	}
 
-	manager.Visit(func(name string, c feature_stats.Counter) bool {
+	manager.VisitCounters(func(name string, c feature_stats.Counter) bool {
 		if matcher.Match(name) {
 			var value int64
 			if request.Reset_ {
