@@ -97,11 +97,7 @@ func NewManager(ctx context.Context, config *Config) (*Manager, error) {
 	m := &Manager{
 		counters: make(map[string]*Counter),
 	}
-
-	if config.TrackIp {
-		m.ipStoragers = make(map[string]*IPStorager)
-	}
-
+	m.ipStoragers = make(map[string]*IPStorager)
 	return m, nil
 }
 
